@@ -1,0 +1,978 @@
+{
+  "name": "whatsapp_evo_api",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tutorial",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -752,
+        -288
+      ],
+      "id": "852f73a5-09c7-4d67-a2b7-4c3a756243a0",
+      "name": "Webhook",
+      "webhookId": "33b65778-aef0-46d9-a6f5-691c9dc7793a"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://evo-api-whatsapp-evolution-api.yukype.easypanel.host/message/sendText/firstDemoWhatsapp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "429683C4C977415CAAFCCE10F7D57E11"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \n  \"number\": \"{{ $('Date & Time').item.json.body.data.key.remoteJid }}\",\n  \"text\": {{ JSON.stringify($json.output) }},\n  \"linkPreview\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        960,
+        -288
+      ],
+      "id": "5d0b55a5-25e0-4d8b-9379-e7a9b9878497",
+      "name": "HTTP Request",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c8589b7d-1318-4a5e-a534-a4f3dfd300e8",
+              "leftValue": "={{ $json.body.data.key.fromMe }}",
+              "rightValue": "is",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -544,
+        -288
+      ],
+      "id": "9b7ff887-5693-4a98-9557-f39d5fdc342f",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "options": {
+          "includeInputFields": true,
+          "timezone": "Asia/Kolkata"
+        }
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        -288
+      ],
+      "id": "f036c631-526d-4a4d-8792-3e95bb895f68",
+      "name": "Date & Time",
+      "alwaysOutputData": false,
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User message:  {{ $('Filter').item.json.body.data.message.conversation }}\n\nThis is the person's phone number: {{ $('Filter').item.json.body.data.key.remoteJid }}",
+        "options": {
+          "systemMessage": "=# Role\nYou are Anjali, an AI assistant for Dermalife Skin Clinic, Gurgaon.\nYour job is to answer user queries, qualify them, and help them book appointments.\n\n# Context\nUsers are reaching out to you for skin and dermatology related services.\nYour goal is to resolve their queries and if they want to book an appointment, help them with that.\n\nCurrent time: {{ $('Date & Time').item.json.currentDate }}\nThere are 2 entry cases:\n1. Direct Walk-in: User starts a fresh chat.\n2. Lead Follow-up: User is replying to a 7-touch automated sequence after filling out a lead form from a Meta ad.\n\nSource: {{ $json.source }}\nTouch history (your prior messages to this lead): {{ $json.touch_history || \"None\" }}\nLead name: {{ $json.name || \"\" }}\nLead concern: {{ $json.reason || \"\" }}\nLead phone: {{ $json.phone_number || \"\" }}\n\n---\n\n# Task\n\n## Step 1 — Detect Entry Point\n\n### If source = \"lead_form\":\n- Treat touch_history as your own prior messages in this conversation.\n- You already know their name and concern. Do not ask for these again.\n- Do not re-introduce yourself as if this is a new conversation.\n- Acknowledge their reply warmly and continue naturally from the last touch.\n- Ask them to expand on their concern, then how long they've had it, then if they've tried any solutions before — but only if these are not already answered in touch_history or the current conversation.\n\n### If source = \"direct\":\n- Start fresh. You know nothing about them.\n- Greet them and ask their name and how you can help.\n- Start with: \"Hey, this is Anjali from Dermalife Skin Clinic. May I know your name and how can I help you today?\"\n\n\n---\n\n## Step 2 — General Queries\n\n### If user asks clinic-related questions:\nAnswer briefly.\nThen ask if they need anything else.\n\n### If they want to book, move to booking flow.\n\n---\n## Step 3 — Booking Flow\n\nBefore asking any qualification question, check what\nyou already know from the lead form data and conversation\nhistory. Never ask for information you already have.\n\nQuestions to collect — ask only what is missing:\n\n1. What skin or hair concern are you facing?\n   → SKIP if source = \"lead_form\" (you have: {{ $json.reason }})\n   → SKIP if already discussed in touch_history or conversation\n\n2. How long have you been dealing with this?\n   → SKIP if already answered in touch_history or conversation\n   → Ask if not found anywhere\n\n3. Have you tried any treatments before?\n   → SKIP if already answered in touch_history or conversation\n   → Ask if not found anywhere\n\nOnly ask one question at a time.\nDo not proceed to Step 4 until all 3 answers are present —\neither from the form, touch history, or this conversation.\n\n---\n\n## Step 4 — Qualification Rule\n\nAll 3 answers must be present before moving forward —\neither from the form data, touch history, or the conversation.\nIf any answer is incomplete, keep asking.\nIf the concern is clearly irrelevant to a skin clinic,\npolitely let them know and stop the booking flow.\n\n---\n\n## Step 5 — Booking Permission\n\nOnce qualified, ask if they would be up for a free consultation with your doctor?\n\nIf yes, move to Step 6\nIf no, Ask them politely the reason for not going ahead with booking call.\nOnce they tell the reason, acknowledge them and ask them one more time if they would be up for a consultation. \nIf they say yes, move to step 6. \nIf they say no, acknowledge them and politely end the conversation there.\n\n---\n\n## Step 6 — Collect Phone Number\n\n### If source = \"lead_form\":\nAsk them if you should use the same number they're texting from for booking appointment?\n- If yes, use {{ $json.remoteJidFromGoogle.split(\"@\")[0] }}\n- If no, ask them the number to for booking appointment. make sure that number is available on whatsapp.\n\n### If source = \"direct\":\nAsk whats the best phone number you can use to book apppointment for them?\n- If they say use this number → use {{ $json.remoteJidFromGoogle.split(\"@\")[0] }}\n\n---\n\n## Step 7 — Slot Collection\n\n### if they agree for booking, ask them which date and time works the best for them.\n\n### if they dont agree for booking appointment, acknowledge them and ask if there's anything they need help with.\n\n### if they ask available slots for a day, call fetch_busy_slots to get all the busy slots for that lie between 10am and 6pm of the requested date.   - Calculate all free :00 and :30 slots from the response.   - Present the available slots clearly to the user\n\nlet them know to wait while you check availability.\n\n### If the requested appointment for today, call fetch_busy_slots to get all the busy slots that lie between current time and 6pm today.\n\n### If they wanna book appointment for a future date, call fetch_busy_slots to get all the busy slots that lie between 10am and 6pm of the requested date.\n\n- If nothing was returned, know all slots are available and you can go to BOOK APPOINTMENT section.\n\n- If events are returned, know that these are busy slots.\n\n- If requested appointment slot is not in the returned events list, it means it is available and you can go to BOOK APPOINTMENT section.     \n\n- If requested appointment slot is in the returned events list, it means slot is not available.\n\n---\n\n## Step 8 — Book Appointment\n\n- call book_appointment tool.   \n- call capture_lead tool.\n\nupon appointment confirmation, let them know their appointment is confirmed. \n\n\n# Exampele  \n\n## Source = Direct \n\nUser: hi  \nAssistant: Hey, this is Anjali from Dermalife. What’s your name and how can I help you?  \n\nUser: i am rahul, i wanna book appointment  \nAssistant: Sure, Rahul! May I know what skin or hair concern you’re facing?  \n\nUser: yeah im having too much dandruf.  \nAssistant: Got it, Rahul. How long have you been dealing with dandruff?  \n\nUser: around 1 -2 month  \nAssistant: Have you tried any treatments before?  \n\nUser: yeah just anti dandruff shampoos but they did not solve the issue  \nAssistant: ohh i see, that can be frustrating. Would you want to book a free consultation with ur Rahul?  \n\nUser:  Yeah, i would!  \nAssistant: Great, what will be your best phone number so i can use it to book appointment?  \n\nUser:  7863040786  \nAssistant: Thank you! What date and time would you like to book the appointment for?  \n\nUser: tomorrow 1pm  \nAssistant: Got it. Give me a moment while I check availability for you.  That slot is available. Would you like me to book it for you?  \n\nUser: yeh please book me in  \nAssistant: Your appointment has been successfully booked for tomorrow at 1:00 PM. is there anything else i can help you with?  \n\nUser: No, thank you!\n\n---\n\n## Source = lead_form\n\nLead filled form for hairfall. Touch history has 3 prior messages.\nLead replies: \"yes I want help\"\n\nAssistant: amazing. before we move forward, tell me a bit more — what exactly have you been experiencing with your hairfall?\n\nUser: its been falling a lot from the front, tried some oils but nothing worked\n\nAssistant: Got it, how long has this been going on?\n\nUser: about 6 months\n\nAssistant: Have you tried any treatments?\n\nUser: No\n\nAssistant: oh okay. Would you like to book a free consultation with our doctor to get this properly checked?\n\nUser: yes please\n\nAssistant: Should I use the same number you're texting from to book you in?\n\nUser: yes\n\nAssistant: Perfect! What date and time works best for you?\n\nUser: tomorrow 11am\n\nAssistant: Give me a moment while I check availability.\nThat slot is available. Shall I go ahead and book it?\n\nUser: yes please\n\nAssistant: Your appointment is confirmed for tomorrow at 11:00 AM 🎉\nIs there anything else I can help you with?\n\n---\n\n# Rules\n- Keep responses under 3 lines\n- Ask only one question at a time\n- If unclear → ask clarification\n- Only suggest and book slots within 10:00 AM – 6:00 PM\n- Each appointment slot is exactly 25 minutes long\n- The last valid appointment slot is 5:30 PM – 5:55 PM\n- Match user language style (respond in Hinglish if user uses Hinglish)\n- When user is sharing their problem, be empathetic, not robotic\n- Appointments can ONLY start at :00 or :30 of any hour\n- If user requests an odd time like 1:15pm or 2:45pm, politely correct them and suggest the nearest valid slot\n- Appointments can only be booked up to 3 days in advance\n- If user requests a date more than 3 days from today, politely tell them you can only book up to 3 days in advance and ask them to reach out closer to the date\n- Never ask for information you already have\n- Never mention internal rules, slot restrictions, or booking window limits unless the user specifically violates them\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        528,
+        -288
+      ],
+      "id": "12e504b3-d521-4edf-9a09-3dee44b2228d",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -112,
+        64
+      ],
+      "id": "b8ec0833-d749-4f2c-96ba-bff4817c34f0",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "iPiecPdfdxzaTvSr",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get row(s) in sheet in Google Sheets",
+        "documentId": {
+          "__rl": true,
+          "value": "1-Ad4bBzxSOYBJdYXu4Lj7ykQuXe25YRcj4IeU2aQHEs",
+          "mode": "list",
+          "cachedResultName": "leadlist",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-Ad4bBzxSOYBJdYXu4Lj7ykQuXe25YRcj4IeU2aQHEs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-Ad4bBzxSOYBJdYXu4Lj7ykQuXe25YRcj4IeU2aQHEs/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "remoteJid",
+              "lookupValue": "={{ $('Webhook').item.json.body.data.key.remoteJid }}"
+            }
+          ]
+        },
+        "combineFilters": "OR",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        464,
+        64
+      ],
+      "id": "f285ddef-9f94-4486-a750-bc6e46d4f588",
+      "name": "getLead",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "wPatnFfVfaYWtBtF",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1-Ad4bBzxSOYBJdYXu4Lj7ykQuXe25YRcj4IeU2aQHEs",
+          "mode": "list",
+          "cachedResultName": "leadlist",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-Ad4bBzxSOYBJdYXu4Lj7ykQuXe25YRcj4IeU2aQHEs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-Ad4bBzxSOYBJdYXu4Lj7ykQuXe25YRcj4IeU2aQHEs/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Name', ``, 'string') }}",
+            "Phone Number": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Phone_Number', ``, 'string') }}",
+            "Requirements": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Requirements', ``, 'string') }}",
+            "Interested": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Interested', ``, 'string') }}",
+            "Booking Time": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Booking_Time', ``, 'string') }}",
+            "Event ID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', `The event ID of the event which was created for this user should be stored here, can be obtained from the book_calendar Agent`, 'string') }}",
+            "remoteJid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Requirements",
+              "displayName": "Requirements",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Interested",
+              "displayName": "Interested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Booking Time",
+              "displayName": "Booking Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Event ID",
+              "displayName": "Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "remoteJid",
+              "displayName": "remoteJid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        64
+      ],
+      "id": "c46c9e04-ab33-4d14-b738-473cc2a3e578",
+      "name": "lead_capture",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "wPatnFfVfaYWtBtF",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "raghavl.automations@gmail.com",
+          "mode": "list",
+          "cachedResultName": "raghavl.automations@gmail.com"
+        },
+        "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+        "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        944,
+        80
+      ],
+      "id": "ffb6df57-7eb8-4a35-aa26-18ebcdf4638d",
+      "name": "book_appointment",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "drQNBztnRF0fkXnl",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1-Ad4bBzxSOYBJdYXu4Lj7ykQuXe25YRcj4IeU2aQHEs",
+          "mode": "list",
+          "cachedResultName": "leadlist",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-Ad4bBzxSOYBJdYXu4Lj7ykQuXe25YRcj4IeU2aQHEs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-Ad4bBzxSOYBJdYXu4Lj7ykQuXe25YRcj4IeU2aQHEs/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Interested": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Interested', ``, 'string') }}",
+            "Booking Time": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Booking_Time', ``, 'string') }}",
+            "Phone Number": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Phone_Number__using_to_match_', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "Phone Number"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Requirements",
+              "displayName": "Requirements",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Interested",
+              "displayName": "Interested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Booking Time",
+              "displayName": "Booking Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Event ID",
+              "displayName": "Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        352,
+        64
+      ],
+      "id": "f992fde6-1bec-4ab9-bb9a-97825bc781bc",
+      "name": "update_lead",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "wPatnFfVfaYWtBtF",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        64
+      ],
+      "id": "40933f16-6d8b-443f-b70b-a0c0cd281735",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to check busy slots within the specified time window.",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "raghavl.automations@gmail.com",
+          "mode": "list",
+          "cachedResultName": "raghavl.automations@gmail.com"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        768,
+        80
+      ],
+      "id": "adb9e153-1072-4111-ba07-3da85f975879",
+      "name": "fetch_busy_slots",
+      "notesInFlow": false,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "drQNBztnRF0fkXnl",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "value": "raghavl.automations@gmail.com",
+          "mode": "list",
+          "cachedResultName": "raghavl.automations@gmail.com"
+        },
+        "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        1104,
+        80
+      ],
+      "id": "e219618e-7d57-4a6a-a50b-da1d7d79c3fc",
+      "name": "Delete an event in Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "drQNBztnRF0fkXnl",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1NsCTAMdNeSffIZ36tHEh6M200AoCkND6bi0Q8KPDrH4",
+          "mode": "list",
+          "cachedResultName": "inquiry",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NsCTAMdNeSffIZ36tHEh6M200AoCkND6bi0Q8KPDrH4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NsCTAMdNeSffIZ36tHEh6M200AoCkND6bi0Q8KPDrH4/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "remoteJid",
+              "lookupValue": "={{ $('Filter').item.json.body.data.key.remoteJid }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -144,
+        -288
+      ],
+      "id": "787aeaa6-5ebe-4d27-ac18-52f304f2e861",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "wPatnFfVfaYWtBtF",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "749c79d6-1838-4d74-a9ee-362e7f80f153",
+              "leftValue": "={{ $json.remoteJid != undefined && $json.remoteJid != \"\" }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        -288
+      ],
+      "id": "2918399e-d083-43da-8374-f079bad843b5",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "544cd2ce-d7e7-44b0-8f15-d39831f01177",
+              "name": "phone_number",
+              "value": "={{ $json['phone number'] }}",
+              "type": "number"
+            },
+            {
+              "id": "c30396d5-67fb-4b27-8b45-92d616e54521",
+              "name": "reason",
+              "value": "={{ $json.reason }}",
+              "type": "string"
+            },
+            {
+              "id": "4c6232c1-293e-4cfb-b558-4a352ae47b62",
+              "name": "touch_history",
+              "value": "={{ $json.touch_history }}",
+              "type": "string"
+            },
+            {
+              "id": "08ad6edd-421d-4e94-8518-d1313487a9a5",
+              "name": "remoteJidFromGoogle",
+              "value": "={{ $json.remoteJid }}",
+              "type": "string"
+            },
+            {
+              "id": "83b36745-9407-44bd-b941-57484eabfe22",
+              "name": "=source",
+              "value": "={{ $('Get row(s) in sheet').item.json.remoteJid ? \"lead_form\" : \"direct\" }}",
+              "type": "string"
+            },
+            {
+              "id": "418d2cef-7efc-4065-b5e6-07c043d8c8e5",
+              "name": "name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        -288
+      ],
+      "id": "5dacfe59-9e20-484d-9a3c-13a66d6a01ce",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n-first-n8n.yukype.easypanel.host",
+            "user-agent": "axios/1.13.2",
+            "content-length": "1497",
+            "accept": "application/json, text/plain, */*",
+            "accept-encoding": "gzip, compress, deflate, br",
+            "content-type": "application/json",
+            "x-forwarded-for": "172.18.0.1",
+            "x-forwarded-host": "n8n-first-n8n.yukype.easypanel.host",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "2f8bc2427114",
+            "x-real-ip": "172.18.0.1"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "event": "messages.upsert",
+            "instance": "firstDemoWhatsapp",
+            "data": {
+              "key": {
+                "remoteJid": "917863040786@s.whatsapp.net",
+                "remoteJidAlt": "917863040786@s.whatsapp.net",
+                "fromMe": false,
+                "id": "3ACE0D6B3D58042A7F3B",
+                "participant": "",
+                "addressingMode": "lid"
+              },
+              "pushName": "Raghav",
+              "status": "DELIVERY_ACK",
+              "message": {
+                "conversation": "no can you book for 2pm as well?",
+                "messageContextInfo": {
+                  "threadId": [],
+                  "deviceListMetadata": {
+                    "senderKeyIndexes": [],
+                    "recipientKeyIndexes": [],
+                    "senderKeyHash": {
+                      "0": 42,
+                      "1": 72,
+                      "2": 141,
+                      "3": 126,
+                      "4": 205,
+                      "5": 188,
+                      "6": 117,
+                      "7": 218,
+                      "8": 23,
+                      "9": 241
+                    },
+                    "senderTimestamp": {
+                      "low": 1775800216,
+                      "high": 0,
+                      "unsigned": true
+                    },
+                    "recipientKeyHash": {
+                      "0": 104,
+                      "1": 32,
+                      "2": 27,
+                      "3": 87,
+                      "4": 18,
+                      "5": 172,
+                      "6": 156,
+                      "7": 247,
+                      "8": 176,
+                      "9": 64
+                    },
+                    "recipientTimestamp": {
+                      "low": 1776711986,
+                      "high": 0,
+                      "unsigned": true
+                    }
+                  },
+                  "deviceListMetadataVersion": 2,
+                  "messageSecret": {
+                    "0": 209,
+                    "1": 151,
+                    "2": 110,
+                    "3": 69,
+                    "4": 38,
+                    "5": 35,
+                    "6": 48,
+                    "7": 113,
+                    "8": 249,
+                    "9": 189,
+                    "10": 39,
+                    "11": 171,
+                    "12": 249,
+                    "13": 120,
+                    "14": 186,
+                    "15": 105,
+                    "16": 249,
+                    "17": 100,
+                    "18": 77,
+                    "19": 102,
+                    "20": 10,
+                    "21": 47,
+                    "22": 63,
+                    "23": 230,
+                    "24": 111,
+                    "25": 232,
+                    "26": 178,
+                    "27": 231,
+                    "28": 224,
+                    "29": 153,
+                    "30": 123,
+                    "31": 203
+                  }
+                }
+              },
+              "messageType": "conversation",
+              "messageTimestamp": 1776923115,
+              "instanceId": "98535c0f-cb38-4e62-8569-4c45f1449301",
+              "source": "ios"
+            },
+            "destination": "https://n8n-first-n8n.yukype.easypanel.host/webhook/tutorial",
+            "date_time": "2026-04-23T02:45:15.529Z",
+            "sender": "917982414627@s.whatsapp.net",
+            "server_url": "https://evo-api-whatsapp-evolution-api.yukype.easypanel.host",
+            "apikey": "5AC49D90EA68-4EBD-9653-6FC6FEDBBE18"
+          },
+          "webhookUrl": "https://n8n-first-n8n.yukype.easypanel.host/webhook/tutorial",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Date & Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getLead": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "lead_capture": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "book_appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_lead": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch_busy_slots": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete an event in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "5c6b818d-2368-498c-aac7-c1781c4c6e27",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "13f13fa981d639d80a3e8d2ca357cf5b0da8937a31d6114d10a8abf1421f32a8"
+  },
+  "id": "VzQZBBI1icMlhGgH",
+  "tags": []
+}
